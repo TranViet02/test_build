@@ -15,22 +15,38 @@ jobs:
           channel: 'stable'
           architecture: x64
       - run: flutter pub get
-      
-
       - run: pod repo update
         working-directory: ios
-
       - run: flutter build ios --release --no-codesign
-
       - run: mkdir Payload
         working-directory: build/ios/iphoneos
-
       - run: mv Runner.app/ Payload
         working-directory: build/ios/iphoneos
-
       - name: Zip output
         run: zip -qq -r -9 FlutterIpaExport.ipa Payload
         working-directory: build/ios/iphoneos
+
+      - name: Check if release exists, create if not
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const tag = 'v1.0';
+            const releases = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const releaseExists = releases.data.some(release => release.tag_name === tag);
+            if (!releaseExists) {
+              await github.rest.repos.createRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tag,
+                name: `Release ${tag}`,
+                body: 'This is the first release!',
+                draft: false,
+                prerelease: false,
+              });
+            }
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
